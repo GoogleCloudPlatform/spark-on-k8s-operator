@@ -321,7 +321,7 @@ func (c *Controller) getAndUpdateDriverState(app *v1beta2.SparkApplication) erro
 	if driverPod == nil {
 		app.Status.AppState.ErrorMessage = "driver pod not found"
 		app.Status.AppState.State = v1beta2.FailingState
-		app.Status.TerminationTime = metav1.Now()
+		app.Status.TerminationTime = &metav1.Time{Time: time.Now()}
 		return nil
 	}
 
@@ -330,7 +330,7 @@ func (c *Controller) getAndUpdateDriverState(app *v1beta2.SparkApplication) erro
 
 	if hasDriverTerminated(driverState) {
 		if app.Status.TerminationTime.IsZero() {
-			app.Status.TerminationTime = metav1.Now()
+			app.Status.TerminationTime = &metav1.Time{Time: time.Now()}
 		}
 		if driverState == v1beta2.DriverFailedState {
 			state := getDriverContainerTerminatedState(driverPod.Status)
@@ -545,7 +545,7 @@ func (c *Controller) syncSparkApplication(key string) error {
 		if !shouldRetry(appCopy) {
 			appCopy.Status.AppState.State = v1beta2.FailedState
 			c.recordSparkApplicationEvent(appCopy)
-		} else if isNextRetryDue(appCopy.Spec.RestartPolicy.OnFailureRetryInterval, appCopy.Status.ExecutionAttempts, appCopy.Status.TerminationTime) {
+		} else if isNextRetryDue(appCopy.Spec.RestartPolicy.OnFailureRetryInterval, appCopy.Status.ExecutionAttempts, *appCopy.Status.TerminationTime) {
 			if err := c.deleteSparkResources(appCopy); err != nil {
 				glog.Errorf("failed to delete resources associated with SparkApplication %s/%s: %v",
 					appCopy.Namespace, appCopy.Name, err)
@@ -558,7 +558,7 @@ func (c *Controller) syncSparkApplication(key string) error {
 			// App will never be retried. Move to terminal FailedState.
 			appCopy.Status.AppState.State = v1beta2.FailedState
 			c.recordSparkApplicationEvent(appCopy)
-		} else if isNextRetryDue(appCopy.Spec.RestartPolicy.OnSubmissionFailureRetryInterval, appCopy.Status.SubmissionAttempts, appCopy.Status.LastSubmissionAttemptTime) {
+		} else if isNextRetryDue(appCopy.Spec.RestartPolicy.OnSubmissionFailureRetryInterval, appCopy.Status.SubmissionAttempts, *appCopy.Status.LastSubmissionAttemptTime) {
 			appCopy = c.submitSparkApplication(appCopy)
 		}
 	case v1beta2.InvalidatingState:
@@ -658,7 +658,7 @@ func (c *Controller) submitSparkApplication(app *v1beta2.SparkApplication) *v1be
 				ErrorMessage: err.Error(),
 			},
 			SubmissionAttempts:        app.Status.SubmissionAttempts + 1,
-			LastSubmissionAttemptTime: metav1.Now(),
+			LastSubmissionAttemptTime: &metav1.Time{Time: time.Now()},
 		}
 		return app
 	}
@@ -671,7 +671,7 @@ func (c *Controller) submitSparkApplication(app *v1beta2.SparkApplication) *v1be
 				ErrorMessage: err.Error(),
 			},
 			SubmissionAttempts:        app.Status.SubmissionAttempts + 1,
-			LastSubmissionAttemptTime: metav1.Now(),
+			LastSubmissionAttemptTime: &metav1.Time{Time: time.Now()},
 		}
 		c.recordSparkApplicationEvent(app)
 		glog.Errorf("failed to run spark-submit for SparkApplication %s/%s: %v", app.Namespace, app.Name, err)
@@ -695,7 +695,7 @@ func (c *Controller) submitSparkApplication(app *v1beta2.SparkApplication) *v1be
 		},
 		SubmissionAttempts:        app.Status.SubmissionAttempts + 1,
 		ExecutionAttempts:         app.Status.ExecutionAttempts + 1,
-		LastSubmissionAttemptTime: metav1.Now(),
+		LastSubmissionAttemptTime: &metav1.Time{Time: time.Now()},
 	}
 	c.recordSparkApplicationEvent(app)
 
@@ -986,14 +986,14 @@ func (c *Controller) clearStatus(status *v1beta2.SparkApplicationStatus) {
 		status.SparkApplicationID = ""
 		status.SubmissionAttempts = 0
 		status.ExecutionAttempts = 0
-		status.LastSubmissionAttemptTime = metav1.Time{}
-		status.TerminationTime = metav1.Time{}
+		status.LastSubmissionAttemptTime = &metav1.Time{}
+		status.TerminationTime = &metav1.Time{}
 		status.AppState.ErrorMessage = ""
 		status.ExecutorState = nil
 	} else if status.AppState.State == v1beta2.PendingRerunState {
 		status.SparkApplicationID = ""
 		status.SubmissionAttempts = 0
-		status.LastSubmissionAttemptTime = metav1.Time{}
+		status.LastSubmissionAttemptTime = &metav1.Time{}
 		status.DriverInfo = v1beta2.DriverInfo{}
 		status.AppState.ErrorMessage = ""
 		status.ExecutorState = nil
