@@ -120,6 +120,9 @@ affinity: {}
 # podAnnotations -- Additional annotations to add to the pod
 podAnnotations: {}
 
+# podLabels -- Additional labels to add to the pod
+podLabels: {}
+
 # resources -- Pod resource requests and limits
 resources: {}
   # limits:
