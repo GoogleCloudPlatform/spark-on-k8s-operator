@@ -77,6 +77,8 @@ type Controller struct {
 	podLister         v1.PodLister
 	ingressURLFormat  string
 	ingressClassName  string
+	enableIngressTLS bool
+	ingressTLSAnnotations string
 	batchSchedulerMgr *batchscheduler.SchedulerManager
 	enableUIService   bool
 }
@@ -91,6 +93,8 @@ func NewController(
 	namespace string,
 	ingressURLFormat string,
 	ingressClassName string,
+	enableIngressTLS bool,
+	ingressTLSAnnotations string,
 	batchSchedulerMgr *batchscheduler.SchedulerManager,
 	enableUIService bool) *Controller {
 	crdscheme.AddToScheme(scheme.Scheme)
@@ -102,7 +106,7 @@ func NewController(
 	})
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, apiv1.EventSource{Component: "spark-operator"})
 
-	return newSparkApplicationController(crdClient, kubeClient, crdInformerFactory, podInformerFactory, recorder, metricsConfig, ingressURLFormat, ingressClassName, batchSchedulerMgr, enableUIService)
+	return newSparkApplicationController(crdClient, kubeClient, crdInformerFactory, podInformerFactory, recorder, metricsConfig, ingressURLFormat, ingressClassName, enableIngressTLS, ingressTLSAnnotations, batchSchedulerMgr, enableUIService)
 }
 
 func newSparkApplicationController(
@@ -114,6 +118,8 @@ func newSparkApplicationController(
 	metricsConfig *util.MetricConfig,
 	ingressURLFormat string,
 	ingressClassName string,
+	enableIngressTLS bool,
+	ingressTLSAnnotations string,
 	batchSchedulerMgr *batchscheduler.SchedulerManager,
 	enableUIService bool) *Controller {
 	queue := workqueue.NewNamedRateLimitingQueue(&workqueue.BucketRateLimiter{Limiter: rate.NewLimiter(rate.Limit(queueTokenRefillRate), queueTokenBucketSize)},
@@ -126,6 +132,8 @@ func newSparkApplicationController(
 		queue:             queue,
 		ingressURLFormat:  ingressURLFormat,
 		ingressClassName:  ingressClassName,
+		enableIngressTLS: enableIngressTLS,
+		ingressTLSAnnotations: ingressTLSAnnotations,
 		batchSchedulerMgr: batchSchedulerMgr,
 		enableUIService:   enableUIService,
 	}
@@ -703,7 +711,7 @@ func (c *Controller) submitSparkApplication(app *v1beta2.SparkApplication) *v1be
 						app.Spec.SparkConf["spark.ui.proxyBase"] = ingressURL.Path
 						app.Spec.SparkConf["spark.ui.proxyRedirectUri"] = "/"
 					}
-					ingress, err := createSparkUIIngress(app, *service, ingressURL, c.ingressClassName, c.kubeClient)
+					ingress, err := createSparkUIIngress(app, *service, ingressURL, c.ingressClassName, c.enableIngressTLS, c.ingressTLSAnnotations, c.kubeClient)
 					if err != nil {
 						glog.Errorf("failed to create UI Ingress for SparkApplication %s/%s: %v", app.Namespace, app.Name, err)
 					} else {
