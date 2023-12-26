@@ -31,6 +31,6 @@ func (s sparkApps) Swap(i, j int) {
 }
 
 func (s sparkApps) Less(i, j int) bool {
-	// Sort by decreasing order of application names and correspondingly creation time.
-	return s[i].Name > s[j].Name
+	// Sort explicitly by decreasing order of application CreationTimestamp.
+	return s[j].CreationTimestamp.Before(&s[i].CreationTimestamp)
 }
