@@ -25,7 +25,7 @@ For a more detailed guide on how to use, compose, and work with `SparkApplicatio
 To install the operator, use the Helm [chart](../charts/spark-operator-chart).
 
 ```bash
-$ helm repo add spark-operator https://googlecloudplatform.github.io/spark-on-k8s-operator
+$ helm repo add spark-operator https://kubeflow.github.io/spark-operator
 
 $ helm install my-release spark-operator/spark-operator --namespace spark-operator --create-namespace
 ```
